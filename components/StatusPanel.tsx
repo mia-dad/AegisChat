@@ -7,7 +7,7 @@ interface Props {
   framesCount: number;
 }
 
-export const StatusPanel: React.FC<Props> = ({ context, framesCount }) => {
+export const StatusPanel: React.FC<Props> = ({ context }) => {
   const getStatusDisplay = (status: AgentStatus) => {
     switch (status) {
       case AgentStatus.IDLE: return { label: '待机', color: 'bg-zinc-800 text-zinc-400 border-zinc-700' };
@@ -20,7 +20,6 @@ export const StatusPanel: React.FC<Props> = ({ context, framesCount }) => {
   };
 
   const statusMeta = getStatusDisplay(context.status);
-  const elapsedTime = Math.floor((Date.now() - context.startTime) / 1000);
 
   return (
     <header className="sticky top-0 z-30 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 px-6 py-3">
@@ -49,30 +48,12 @@ export const StatusPanel: React.FC<Props> = ({ context, framesCount }) => {
            </div>
         </div>
 
-        {/* Center: Current Objective */}
-        <div className="flex-1 max-w-xl hidden md:flex items-center justify-center">
-            <div className="bg-zinc-900 border border-zinc-800 rounded px-4 py-1.5 flex items-center gap-3 w-full max-w-md shadow-inner">
+        {/* Center/Right: Current Objective (Expanded to fill remaining space) */}
+        <div className="flex-1 w-full flex items-center justify-end md:justify-center lg:justify-end">
+            <div className="bg-zinc-900/50 border border-zinc-800/50 rounded px-4 py-1.5 flex items-center gap-3 w-full md:w-auto md:min-w-[300px] max-w-xl shadow-inner">
                 <span className="text-[10px] uppercase text-zinc-500 font-mono whitespace-nowrap">当前目标 OBJECTIVE</span>
-                <span className="text-xs text-zinc-200 truncate font-mono">{context.currentObjective}</span>
+                <span className="text-xs text-zinc-300 truncate font-mono flex-1 text-right md:text-left">{context.currentObjective}</span>
             </div>
-        </div>
-
-        {/* Right: Metrics */}
-        <div className="flex items-center gap-5 text-xs font-mono text-zinc-500">
-             {context.activeSkill && (
-                <div className="flex items-center gap-1.5 text-tech-500">
-                    <Icons.Activity className="w-3.5 h-3.5" />
-                    <span>{context.activeSkill}</span>
-                </div>
-             )}
-             <div className="flex items-center gap-1.5">
-                <Icons.Clock className="w-3.5 h-3.5" />
-                <span>{elapsedTime}s</span>
-             </div>
-             <div className="flex items-center gap-1.5">
-                <Icons.Layers className="w-3.5 h-3.5" />
-                <span>{framesCount} F</span>
-             </div>
         </div>
       </div>
     </header>

@@ -63,9 +63,6 @@ const App: React.FC = () => {
           handleResolveAwait(activeAwaitFrame.id, value);
       } else {
           // 如果没有 Await 帧，可能是用户主动发起的指令（Interrupt/New Goal）
-          // 模拟创建一个临时 Await ID 或直接发送通用指令
-          // 在 Agent Runtime 模式下，通常建议所有输入都必须响应 Await，
-          // 但为了用户体验，我们可以允许“空闲时”发送新目标。
           if (context.status === AgentStatus.IDLE) {
               liveRuntime.resolveAwait('new-objective', value);
           }
@@ -73,8 +70,6 @@ const App: React.FC = () => {
   };
 
   const isInputDisabled = !activeAwaitFrame && context.status !== AgentStatus.IDLE; 
-  // 规则：只有在 (1) 有明确 Await 时 OR (2) 系统完全空闲(IDLE)时，才允许输入。
-  // 如果正在执行中(EXECUTING)，输入框应当禁用，或者用于“中断”信号(暂未实现)。
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-tech-500/30">
@@ -90,11 +85,14 @@ const App: React.FC = () => {
         />
       </main>
 
-      {/* 3. Global Input Console */}
+      {/* 3. Global Input Console with Stats */}
       <InputConsole 
         isDisabled={isInputDisabled} 
         onSend={handleConsoleInput}
         placeholder={activeAwaitFrame?.message ? `回复: ${activeAwaitFrame.message.slice(0, 30)}...` : (context.status === AgentStatus.IDLE ? "请输入新的任务目标..." : "Agent 正在执行中...")}
+        startTime={context.startTime}
+        framesCount={frames.length}
+        activeSkill={context.activeSkill}
       />
     </div>
   );
