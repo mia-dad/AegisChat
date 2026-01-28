@@ -1,0 +1,5 @@
+{
+  "name": "AegisChat",
+  "description": "An Agent Runtime Control Console based on the Super Protocol (Output/Await/Document). visualizing the execution path of autonomous agents.",
+  "requestFramePermissions": []
+}
