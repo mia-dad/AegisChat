@@ -83,7 +83,11 @@ export interface CreateSessionRequest {
 
 export interface CreateSessionResponse {
   sessionId: string;
-  sessionState: 'ACTIVE' | string;
+  // Backend returns 'state', legacy might expect 'sessionState'
+  state?: string;
+  sessionState?: string;
+  createdAt?: string;
+  
   // Merging generic response fields that might be present
   executionStatus?: string;
   outputs?: OutputDto[];
