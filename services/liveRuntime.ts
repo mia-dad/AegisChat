@@ -215,13 +215,28 @@ export class LiveRuntimeService {
     if (newStatus === AgentStatus.WAITING && response.awaitSpec) {
         this.currentAwaitSpec = response.awaitSpec;
         
+        // --- Fix: Normalize expectedSchema to fields ---
+        let finalFields = response.awaitSpec.fields;
+        
+        // If fields is missing but expectedSchema exists (Legacy backend support)
+        if ((!finalFields || finalFields.length === 0) && response.awaitSpec.expectedSchema) {
+            finalFields = Object.entries(response.awaitSpec.expectedSchema).map(([key, schema]: [string, any]) => ({
+                key: key,
+                label: key, // Use the key (e.g., 'period') as label if no separate label exists
+                type: schema.options ? 'select' : (schema.type === 'boolean' ? 'boolean' : (schema.type === 'integer' || schema.type === 'number' ? 'number' : 'text')),
+                options: schema.options,
+                required: schema.required,
+                description: schema.description // IMPORTANT: Pass the description for UI rendering
+            }));
+        }
+
         // Map backend spec fields to frontend schema
         const schemaType = response.awaitSpec.type === 'CONFIRMATION' || response.awaitSpec.confirmation 
             ? 'CONFIRMATION' 
-            : (response.awaitSpec.fields && response.awaitSpec.fields.length > 0) ? 'FORM' : 'TEXT';
+            : (finalFields && finalFields.length > 0) ? 'FORM' : 'TEXT';
 
-        // Support SELECTION type if options exist but no fields
-        const finalSchemaType = (response.awaitSpec.options && !response.awaitSpec.fields) ? 'SELECTION' : schemaType;
+        // Support SELECTION type if options exist but no fields (Simple selection)
+        const finalSchemaType = (response.awaitSpec.options && (!finalFields || finalFields.length === 0)) ? 'SELECTION' : schemaType;
 
         this.emit({
             id: this.genId('await'),
@@ -232,7 +247,7 @@ export class LiveRuntimeService {
                 // @ts-ignore
                 type: finalSchemaType,
                 options: response.awaitSpec.options,
-                fields: response.awaitSpec.fields,
+                fields: finalFields, // Use the normalized fields
             },
             resolved: false
         }, { status: newStatus });
@@ -244,18 +259,30 @@ export class LiveRuntimeService {
   private mapInputToStructure(value: string, spec: AwaitSpec): Record<string, any> {
     const result: Record<string, any> = {};
 
+    // 1. Try to map to 'fields'
     if (spec.fields && spec.fields.length > 0) {
         const firstField = spec.fields[0];
         result[firstField.key] = value;
         return result;
     }
+    
+    // 2. Try to map to 'expectedSchema' keys (if fields wasn't populated in local state but exists in spec)
+    if (spec.expectedSchema) {
+        const keys = Object.keys(spec.expectedSchema);
+        if (keys.length > 0) {
+             result[keys[0]] = value;
+             return result;
+        }
+    }
 
+    // 3. Confirmation
     if (spec.type === 'CONFIRMATION' || spec.confirmation) {
         if (value === 'CONFIRM') return { confirmed: true };
         if (value === 'CANCEL') return { confirmed: false };
         return { confirmed: value.toLowerCase().startsWith('y') };
     }
 
+    // 4. Default Fallback
     result['content'] = value; 
     result['input'] = value;
     return result;

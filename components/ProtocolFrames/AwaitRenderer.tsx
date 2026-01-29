@@ -76,15 +76,23 @@ export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest }) =
     if (frame.schema.type === 'FORM' && frame.schema.fields) {
         return (
             <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-800">
-                <div className="space-y-4">
+                <div className="space-y-5">
                     {frame.schema.fields.map(f => (
-                        <div key={f.key} className="flex flex-col space-y-1.5">
-                            <label className="text-xs text-zinc-400 font-medium ml-1">
-                                {f.label} {f.required && <span className="text-red-500">*</span>}
-                            </label>
+                        <div key={f.key} className="flex flex-col space-y-2">
+                            <div className="flex flex-col">
+                                <label className="text-xs text-zinc-300 font-bold ml-1 flex items-center gap-1">
+                                    {f.label} {f.required && <span className="text-red-500" title="Required">*</span>}
+                                </label>
+                                {/* Display description as explicit helper text */}
+                                {f.description && (
+                                    <span className="text-[10px] text-zinc-500 ml-1 mt-0.5 leading-tight">
+                                        {f.description}
+                                    </span>
+                                )}
+                            </div>
                             
                             {f.type === 'boolean' ? (
-                                <div className="flex items-center space-x-3 mt-1">
+                                <div className="flex items-center space-x-3">
                                     <button
                                         onClick={() => handleInputChange(f.key, true)}
                                         className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${formValues[f.key] === true ? 'bg-tech-600 border-tech-500 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-400'}`}
@@ -99,21 +107,24 @@ export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest }) =
                                     </button>
                                 </div>
                             ) : f.options ? (
-                                <select
-                                    value={formValues[f.key] || ''}
-                                    onChange={(e) => handleInputChange(f.key, e.target.value)}
-                                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 focus:border-tech-500 focus:outline-none transition-colors w-full"
-                                >
-                                    <option value="" disabled>请选择...</option>
-                                    {f.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                                <div className="relative">
+                                    <select
+                                        value={formValues[f.key] || ''}
+                                        onChange={(e) => handleInputChange(f.key, e.target.value)}
+                                        className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 focus:border-tech-500 focus:outline-none transition-colors w-full appearance-none"
+                                    >
+                                        <option value="" disabled>请选择...</option>
+                                        {f.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                    <Icons.ChevronDown className="absolute right-3 top-3 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                </div>
                             ) : (
                                 <input 
                                     type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
                                     value={formValues[f.key] || ''}
                                     onChange={(e) => handleInputChange(f.key, e.target.value)}
-                                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 focus:border-tech-500 focus:outline-none transition-colors w-full"
-                                    placeholder={f.description || `请输入${f.label}...`}
+                                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-200 focus:border-tech-500 focus:outline-none transition-colors w-full placeholder-zinc-700"
+                                    placeholder={`请输入 ${f.label}...`}
                                 />
                             )}
                         </div>
@@ -122,9 +133,9 @@ export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest }) =
                 <button
                     onClick={() => onResolve(formValues)}
                     disabled={!isFormValid}
-                    className="mt-5 w-full bg-tech-600 hover:bg-tech-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-bold py-2 rounded-lg transition-colors text-xs shadow-lg shadow-tech-900/20"
+                    className="mt-6 w-full bg-tech-600 hover:bg-tech-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-bold py-2.5 rounded-lg transition-colors text-xs shadow-lg shadow-tech-900/20 uppercase tracking-wide"
                 >
-                    提交 (SUBMIT)
+                    提交 (Submit)
                 </button>
             </div>
         );
