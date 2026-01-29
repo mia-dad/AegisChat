@@ -72,13 +72,14 @@ export class LiveRuntimeService {
   }
 
   // --- 2. Action Handler ---
-  async resolveAwait(frameId: string, value: string) {
+  async resolveAwait(frameId: string, value: string | Record<string, any>) {
     const timestamp = Date.now();
     
+    // Normalize string value for logging
+    const logValue = typeof value === 'string' ? value : JSON.stringify(value);
+
     // Determine if this input triggers a NEW session (Auto-Create)
-    // 1. It's the initial boot input ('await-objective')
-    // 2. The app explicitly requests a new objective ('new-objective') e.g. from IDLE state
-    // 3. We don't have a session ID yet
+    // Only applies if it's the initial boot or explicit new objective
     const shouldCreateSession = frameId === 'await-objective' || frameId === 'new-objective' || !this.sessionId;
 
     // Emit User Input Log immediately
@@ -88,25 +89,21 @@ export class LiveRuntimeService {
         type: FrameType.DOCUMENT,
         title: shouldCreateSession ? '设定目标' : '用户回复',
         contentType: 'LOG',
-        content: shouldCreateSession ? `用户目标: ${value}` : value
+        content: shouldCreateSession ? `用户目标: ${logValue}` : logValue
     }, { 
-        status: AgentStatus.EXECUTING, // Transition to executing immediately for UI feedback
-        // Update objective if it's a new session
-        ...(shouldCreateSession ? { 
+        status: AgentStatus.EXECUTING, 
+        ...(shouldCreateSession && typeof value === 'string' ? { 
             currentObjective: value, 
             startTime: Date.now() 
         } : {})
     });
 
     try {
-        if (shouldCreateSession) {
+        if (shouldCreateSession && typeof value === 'string') {
             // --- SCENARIO A: NEW SESSION ---
-            // "The frontend automatically creates a context session" as requested.
-            
-            // 1. Create Session
             const sessionRes = await createSession(value);
             this.sessionId = sessionRes.sessionId;
-            this.currentAwaitSpec = null; // Clear any old specs
+            this.currentAwaitSpec = null;
             
             const displayState = sessionRes.state || sessionRes.sessionState || 'CREATED';
             
@@ -119,7 +116,6 @@ export class LiveRuntimeService {
                 content: `Session ID: ${this.sessionId}\nState: ${displayState}`,
             });
 
-            // 2. Execute First Turn
             this.emit({
                 id: this.genId('sys-exec-start'),
                 timestamp: Date.now(),
@@ -134,19 +130,24 @@ export class LiveRuntimeService {
 
         } else {
             // --- SCENARIO B: EXISTING SESSION ---
-            // Resume or Follow-up
-            
             if (!this.sessionId) throw new Error("Session ID lost.");
             
             let response: TurnResponse;
 
-            // Check if we are Resuming a structured form/await (Blocked State)
             if (this.currentAwaitSpec && this.currentContext.status === AgentStatus.WAITING) {
-                const structuredInput = this.mapInputToStructure(value, this.currentAwaitSpec);
+                // Resume with structured input if available
+                let structuredInput: Record<string, any> = {};
+                if (typeof value === 'object') {
+                    structuredInput = value;
+                } else {
+                    structuredInput = this.mapInputToStructure(value, this.currentAwaitSpec);
+                }
+
                 response = await resumeSession(this.sessionId, structuredInput);
                 this.currentAwaitSpec = null;
             } else {
-                // Regular chat turn (Follow-up)
+                // Regular chat turn (string only)
+                if (typeof value !== 'string') throw new Error("Interactive turns require string input");
                 response = await executeTurn(this.sessionId, value);
             }
 
@@ -161,7 +162,6 @@ export class LiveRuntimeService {
   // --- 3. Response Processing ---
   private processBackendResponse(response: TurnResponse | CreateSessionResponse) {
     const turnRes = response as TurnResponse;
-    // Map various backend status fields to unified logic
     const backendStatus = turnRes.executionStatus || turnRes.sessionState || (response as any).state; 
 
     let newStatus = AgentStatus.EXECUTING;
@@ -176,15 +176,24 @@ export class LiveRuntimeService {
         newStatus = AgentStatus.PLANNING;
     }
 
-    // Output Frames
+    // Output Frames - Enhanced Mapping
     if (response.outputs && Array.isArray(response.outputs)) {
         response.outputs.forEach((output, idx) => {
+            // Map backend OutputType directly to frontend ContentType
+            // backend: 'text' | 'file' | 'table' | 'chart'
+            // frontend: 'TEXT' | 'FILE' | 'TABLE' | 'CHART' | 'JSON' | ...
+            const upperType = output.type.toUpperCase();
+            const validTypes = ['TEXT', 'FILE', 'TABLE', 'CHART', 'JSON', 'MARKDOWN', 'CODE'];
+            const contentType = validTypes.includes(upperType) ? upperType : 'JSON';
+
             this.emit({
                 id: this.genId(`out-${idx}`),
                 timestamp: Date.now(),
                 type: FrameType.OUTPUT,
-                contentType: output.type === OutputType.TEXT ? 'MARKDOWN' : 'JSON',
-                content: typeof output.data === 'string' ? output.data : JSON.stringify(output.data, null, 2),
+                // @ts-ignore - dynamic mapping
+                contentType: contentType,
+                // Pass raw data for Charts/Tables, string for text if needed
+                content: output.data,
                 metadata: output.metadata
             });
         });
@@ -206,13 +215,24 @@ export class LiveRuntimeService {
     if (newStatus === AgentStatus.WAITING && response.awaitSpec) {
         this.currentAwaitSpec = response.awaitSpec;
         
+        // Map backend spec fields to frontend schema
+        const schemaType = response.awaitSpec.type === 'CONFIRMATION' || response.awaitSpec.confirmation 
+            ? 'CONFIRMATION' 
+            : (response.awaitSpec.fields && response.awaitSpec.fields.length > 0) ? 'FORM' : 'TEXT';
+
+        // Support SELECTION type if options exist but no fields
+        const finalSchemaType = (response.awaitSpec.options && !response.awaitSpec.fields) ? 'SELECTION' : schemaType;
+
         this.emit({
             id: this.genId('await'),
             timestamp: Date.now(),
             type: FrameType.AWAIT,
             message: response.awaitSpec.message || '系统需要您的输入...',
             schema: {
-                type: response.awaitSpec.type === 'CONFIRMATION' || response.awaitSpec.confirmation ? 'CONFIRMATION' : 'TEXT',
+                // @ts-ignore
+                type: finalSchemaType,
+                options: response.awaitSpec.options,
+                fields: response.awaitSpec.fields,
             },
             resolved: false
         }, { status: newStatus });

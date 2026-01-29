@@ -25,6 +25,7 @@ export interface AgentFrame {
     duration?: number;
     confidence?: number; // 0-1
     riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+    [key: string]: any;
   };
 }
 
@@ -42,8 +43,10 @@ export interface DocumentFrame extends AgentFrame {
 // Consumable results. Final deliverables.
 export interface OutputFrame extends AgentFrame {
   type: FrameType.OUTPUT;
-  contentType: 'TEXT' | 'JSON' | 'CODE' | 'MARKDOWN';
-  content: string;
+  // Expanded types to support rich widgets
+  contentType: 'TEXT' | 'JSON' | 'CODE' | 'MARKDOWN' | 'FILE' | 'TABLE' | 'CHART';
+  // Allow objects for Chart/Table data
+  content: string | Record<string, any>;
 }
 
 // 3. AWAIT FRAME
@@ -52,12 +55,20 @@ export interface AwaitFrame extends AgentFrame {
   type: FrameType.AWAIT;
   message: string; // The prompt for the user/system
   schema?: {
-    type: 'CONFIRMATION' | 'TEXT' | 'SELECTION';
-    options?: string[];
+    type: 'CONFIRMATION' | 'TEXT' | 'SELECTION' | 'FORM';
+    options?: Array<{ label: string; value: string; description?: string }>;
+    fields?: Array<{
+        key: string;
+        label: string;
+        type: 'text' | 'date' | 'number' | 'boolean' | 'select';
+        options?: string[];
+        required?: boolean;
+        description?: string;
+    }>;
     defaultValue?: string;
   };
   resolved?: boolean;
-  resolvedValue?: string; // The value provided by user
+  resolvedValue?: string | Record<string, any>; // The value provided by user
 }
 
 export type AnyFrame = DocumentFrame | OutputFrame | AwaitFrame;

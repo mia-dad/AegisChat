@@ -7,7 +7,7 @@ import { Icons } from './icons';
 
 interface Props {
   frames: AnyFrame[];
-  onResolveAwait: (id: string, value: string) => void;
+  onResolveAwait: (id: string, value: string | Record<string, any>) => void;
 }
 
 export const Timeline: React.FC<Props> = ({ frames, onResolveAwait }) => {

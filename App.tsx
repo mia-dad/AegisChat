@@ -44,7 +44,8 @@ const App: React.FC = () => {
     return null;
   }, [frames]);
 
-  const handleResolveAwait = useCallback((frameId: string, value: string) => {
+  // Update handler to accept string OR record
+  const handleResolveAwait = useCallback((frameId: string, value: string | Record<string, any>) => {
     // Optimistic UI update (Local immediate feedback)
     setFrames(prev => prev.map(f => 
         f.id === frameId && f.type === FrameType.AWAIT 
@@ -56,7 +57,7 @@ const App: React.FC = () => {
     liveRuntime.resolveAwait(frameId, value);
   }, []);
 
-  // Handle InputConsole submission
+  // Handle InputConsole submission (always string)
   const handleConsoleInput = (value: string) => {
       // 如果当前有等待的 Await 帧，关联回复
       if (activeAwaitFrame) {
@@ -69,7 +70,9 @@ const App: React.FC = () => {
       }
   };
 
-  const isInputDisabled = !activeAwaitFrame && context.status !== AgentStatus.IDLE; 
+  // Only disable input if we are waiting for a NON-TEXT widget (like a Form)
+  // If it's a generic text await or no await, console is enabled.
+  const isInputDisabled = activeAwaitFrame?.schema?.type === 'FORM' || activeAwaitFrame?.schema?.type === 'SELECTION';
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-tech-500/30">
@@ -81,6 +84,7 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-hidden flex flex-col relative">
         <Timeline 
             frames={frames} 
+            // @ts-ignore
             onResolveAwait={handleResolveAwait} 
         />
       </main>
@@ -89,7 +93,11 @@ const App: React.FC = () => {
       <InputConsole 
         isDisabled={isInputDisabled} 
         onSend={handleConsoleInput}
-        placeholder={activeAwaitFrame?.message ? `回复: ${activeAwaitFrame.message.slice(0, 30)}...` : (context.status === AgentStatus.IDLE ? "请输入新的任务目标..." : "Agent 正在执行中...")}
+        placeholder={
+            activeAwaitFrame?.message 
+            ? `回复: ${activeAwaitFrame.message.slice(0, 30)}...` 
+            : (context.status === AgentStatus.IDLE ? "请输入新的任务目标..." : "Agent 正在执行中...")
+        }
         startTime={context.startTime}
         framesCount={frames.length}
         activeSkill={context.activeSkill}
