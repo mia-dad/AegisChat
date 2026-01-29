@@ -86,6 +86,7 @@ const App: React.FC = () => {
             frames={frames} 
             // @ts-ignore
             onResolveAwait={handleResolveAwait} 
+            status={context.status} // Passed status to control Thinking Bubble
         />
       </main>
 

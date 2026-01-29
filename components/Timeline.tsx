@@ -1,22 +1,55 @@
 import React, { useEffect, useRef } from 'react';
-import { AnyFrame, FrameType } from '../types';
+import { AnyFrame, FrameType, AgentStatus } from '../types';
 import { DocumentRenderer } from './ProtocolFrames/DocumentRenderer';
 import { OutputRenderer } from './ProtocolFrames/OutputRenderer';
 import { AwaitRenderer } from './ProtocolFrames/AwaitRenderer';
 import { Icons } from './icons';
 
+// --- Sub-Component: Thinking Bubble ---
+const ThinkingBubble: React.FC<{ status: AgentStatus }> = ({ status }) => {
+    const getMessage = () => {
+        switch(status) {
+            case AgentStatus.PLANNING: return '正在规划任务路径...';
+            case AgentStatus.EXECUTING: return '正在处理请求...';
+            case AgentStatus.FINALIZING: return '正在生成最终报告...';
+            default: return '系统思考中...';
+        }
+    };
+
+    return (
+        <div className="relative pl-0 sm:pl-8 animate-in fade-in slide-in-from-bottom-2 duration-500 my-4">
+             {/* Node Connector */}
+             <div className="absolute left-0 top-6 w-2.5 h-2.5 -ml-[5px] rounded-full border-2 hidden sm:block z-10 bg-zinc-900 border-zinc-700"></div>
+             
+             <div className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800/50 bg-zinc-900/30 max-w-sm">
+                <div className="flex space-x-1 h-3 items-center px-1">
+                    <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce"></div>
+                </div>
+                <span className="text-xs text-zinc-500 font-mono animate-pulse">
+                    {getMessage()}
+                </span>
+             </div>
+        </div>
+    );
+};
+
 interface Props {
   frames: AnyFrame[];
   onResolveAwait: (id: string, value: string | Record<string, any>) => void;
+  status: AgentStatus; // Added status prop
 }
 
-export const Timeline: React.FC<Props> = ({ frames, onResolveAwait }) => {
+export const Timeline: React.FC<Props> = ({ frames, onResolveAwait, status }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [frames.length]);
+  }, [frames.length, status]); // Scroll when status changes (thinking bubble appears/disappears)
+
+  const isBusy = status === AgentStatus.EXECUTING || status === AgentStatus.PLANNING || status === AgentStatus.FINALIZING;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 relative scroll-smooth">
@@ -68,6 +101,10 @@ export const Timeline: React.FC<Props> = ({ frames, onResolveAwait }) => {
                 </div>
             );
         })}
+
+        {/* Transient Thinking Bubble */}
+        {isBusy && <ThinkingBubble status={status} />}
+
         <div ref={bottomRef} className="h-4" /> {/* Spacer */}
       </div>
     </div>

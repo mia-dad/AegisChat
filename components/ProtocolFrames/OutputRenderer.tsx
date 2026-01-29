@@ -127,8 +127,6 @@ const FileOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata })
 
 // --- Sub-Component: Table Output ---
 const TableOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata }) => {
-  // 1. Search Results Subtype (Restored Logic)
-  // Check specifically for 'search' subtype OR if the data structure looks like search results (has rows but no columns)
   if ((metadata?.subtype === 'search' || !data.columns) && data.rows) {
     return (
       <div className="space-y-3 my-3">
@@ -136,7 +134,6 @@ const TableOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata }
           <div key={idx} className="bg-zinc-950/50 p-3 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition-colors group">
             <h3 className="text-sm font-semibold text-tech-400 mb-1 truncate flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-tech-500/50"></span>
-              {/* Assuming first column or 'url' field is the link */}
               <a href={row.url || row.link || '#'} target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-tech-300">
                 {row.title || row.name || '无标题'}
               </a>
@@ -158,10 +155,8 @@ const TableOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata }
     );
   }
 
-  // 2. Standard Data Table
   if (data.rows && data.columns) {
     const isClickable = metadata?.clickable === true;
-    
     return (
       <div className="overflow-x-auto rounded-lg border border-zinc-700 my-4 shadow-sm bg-zinc-900/30">
         <table className="w-full text-sm text-left text-zinc-300">
@@ -203,6 +198,23 @@ interface Props {
 }
 
 export const OutputRenderer: React.FC<Props> = ({ frame }) => {
+  // Logic to determine what to render
+  const renderTextContent = () => {
+     if (typeof frame.content === 'string') {
+         return <MarkdownView content={frame.content} />;
+     }
+     
+     // Unwrap JSON object if it has a 'content' field (Fix for "ugly JSON" issue)
+     if (typeof frame.content === 'object' && frame.content && 'content' in frame.content) {
+         const innerContent = (frame.content as any).content;
+         if (typeof innerContent === 'string') {
+             return <MarkdownView content={innerContent} />;
+         }
+     }
+
+     return <pre>{JSON.stringify(frame.content, null, 2)}</pre>;
+  };
+
   return (
     <div className="my-6 relative pl-2 group">
         <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-tech-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.6)]"></div>
@@ -222,12 +234,9 @@ export const OutputRenderer: React.FC<Props> = ({ frame }) => {
             
             <div className="prose prose-invert prose-sm max-w-none text-zinc-200">
                 {frame.contentType === 'TEXT' || frame.contentType === 'MARKDOWN' ? (
-                    // 1. Text/Markdown
+                    // 1. Text/Markdown (with JSON unwrapping)
                     <div className="font-sans leading-7">
-                        {typeof frame.content === 'string' 
-                            ? <MarkdownView content={frame.content} />
-                            : <pre>{JSON.stringify(frame.content, null, 2)}</pre>
-                        }
+                        {renderTextContent()}
                     </div>
                 ) : frame.contentType === 'CHART' ? (
                     // 2. Chart
@@ -239,7 +248,7 @@ export const OutputRenderer: React.FC<Props> = ({ frame }) => {
                     // 4. File
                     <FileOutput data={frame.content} metadata={frame.metadata} />
                 ) : (
-                    // 5. Fallback JSON
+                    // 5. Fallback
                     <pre className="text-xs font-mono text-zinc-400 whitespace-pre-wrap">
                         {typeof frame.content === 'string' ? frame.content : JSON.stringify(frame.content, null, 2)}
                     </pre>
