@@ -82,6 +82,9 @@ export class LiveRuntimeService {
     // Only applies if it's the initial boot or explicit new objective
     const shouldCreateSession = frameId === 'await-objective' || frameId === 'new-objective' || !this.sessionId;
 
+    // Fix: Capture the state BEFORE emit updates it to EXECUTING
+    const isResuming = !!this.currentAwaitSpec && this.currentContext.status === AgentStatus.WAITING;
+
     // Emit User Input Log immediately
     this.emit({
         id: this.genId('user-input'),
@@ -134,12 +137,14 @@ export class LiveRuntimeService {
             
             let response: TurnResponse;
 
-            if (this.currentAwaitSpec && this.currentContext.status === AgentStatus.WAITING) {
+            if (isResuming) {
                 // Resume with structured input if available
                 let structuredInput: Record<string, any> = {};
                 if (typeof value === 'object') {
                     structuredInput = value;
                 } else {
+                    // Safety check if spec is null (should not happen due to isResuming check)
+                    if (!this.currentAwaitSpec) throw new Error("AwaitSpec missing during resume");
                     structuredInput = this.mapInputToStructure(value, this.currentAwaitSpec);
                 }
 
