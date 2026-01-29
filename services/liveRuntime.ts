@@ -14,6 +14,9 @@ export class LiveRuntimeService {
   private sessionId: string | null = null;
   private currentAwaitSpec: AwaitSpec | null = null;
   
+  // [修复]: 添加初始化状态锁，防止 React StrictMode 导致的重复初始化
+  private isInitialized = false; 
+
   private currentContext: ExecutionContext = {
     status: AgentStatus.IDLE,
     currentObjective: '等待初始化',
@@ -24,6 +27,8 @@ export class LiveRuntimeService {
 
   subscribe(callback: (frame: AnyFrame, context: ExecutionContext) => void) {
     this.listeners.push(callback);
+    // 如果已经初始化过，新订阅者可能需要获取当前上下文状态（可选）
+    // cb(null, this.currentContext); 
     return () => {
       this.listeners = this.listeners.filter(l => l !== callback);
     };
@@ -48,10 +53,13 @@ export class LiveRuntimeService {
 
   // --- 1. System Init ---
   async initSystem() {
+    // [修复]: 如果已经初始化过，直接返回，不再发送日志
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
     // Simulate boot delay
     await new Promise(r => setTimeout(r, 500));
 
-    // [问题1修复]: 这里控制初始化的日志名称，您可以改为任何您想要的名称
     this.emit({
         id: this.genId('sys-boot'),
         timestamp: Date.now(),
@@ -86,7 +94,7 @@ export class LiveRuntimeService {
     // Fix: Capture the state BEFORE emit updates it to EXECUTING
     const isResuming = !!this.currentAwaitSpec && this.currentContext.status === AgentStatus.WAITING;
 
-    // [问题2修复]: 如果是新会话，添加 isSessionStart 标记，并修改标题
+    // 如果是新会话，添加 isSessionStart 标记，并修改标题
     this.emit({
         id: this.genId('user-input'),
         timestamp,
