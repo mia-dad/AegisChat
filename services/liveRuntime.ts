@@ -51,13 +51,14 @@ export class LiveRuntimeService {
     // Simulate boot delay
     await new Promise(r => setTimeout(r, 500));
 
+    // [问题1修复]: 这里控制初始化的日志名称，您可以改为任何您想要的名称
     this.emit({
         id: this.genId('sys-boot'),
         timestamp: Date.now(),
         type: FrameType.DOCUMENT,
-        title: '系统就绪',
+        title: '系统初始化完成', 
         contentType: 'LOG',
-        content: 'Agent Runtime Service (REST Mode) initialized.',
+        content: 'Agent Runtime Service (REST Mode) initialized.\nReady to accept new objectives.',
     }, { status: AgentStatus.IDLE });
 
     await new Promise(r => setTimeout(r, 200));
@@ -85,14 +86,17 @@ export class LiveRuntimeService {
     // Fix: Capture the state BEFORE emit updates it to EXECUTING
     const isResuming = !!this.currentAwaitSpec && this.currentContext.status === AgentStatus.WAITING;
 
-    // Emit User Input Log immediately
+    // [问题2修复]: 如果是新会话，添加 isSessionStart 标记，并修改标题
     this.emit({
         id: this.genId('user-input'),
         timestamp,
         type: FrameType.DOCUMENT,
-        title: shouldCreateSession ? '设定目标' : '用户回复',
+        title: shouldCreateSession ? '新任务航程' : '用户回复',
         contentType: 'LOG',
-        content: shouldCreateSession ? `用户目标: ${logValue}` : logValue
+        content: shouldCreateSession ? `用户目标: ${logValue}` : logValue,
+        metadata: {
+            isSessionStart: shouldCreateSession // 增加标记供 UI 渲染使用
+        }
     }, { 
         status: AgentStatus.EXECUTING, 
         ...(shouldCreateSession && typeof value === 'string' ? { 

@@ -51,6 +51,29 @@ interface Props {
 export const DocumentRenderer: React.FC<Props> = ({ frame }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // [问题2修复]: 特殊渲染 - 如果是新会话开始
+  if (frame.metadata?.isSessionStart) {
+      return (
+          <div className="relative my-10 group">
+              {/* Divider Line */}
+              <div className="absolute left-0 right-0 top-1/2 h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
+              
+              {/* Center Badge */}
+              <div className="relative flex justify-center">
+                  <div className="bg-zinc-950 border border-tech-500/30 px-6 py-2 rounded-full shadow-[0_0_15px_rgba(20,184,166,0.15)] flex items-center gap-3 z-10">
+                      <div className="bg-tech-500 text-zinc-950 rounded-full p-1">
+                         <Icons.Play className="w-3 h-3 fill-current" />
+                      </div>
+                      <div className="flex flex-col items-center">
+                         <span className="text-[10px] text-tech-500 font-bold uppercase tracking-widest leading-none mb-0.5">NEW MISSION</span>
+                         <span className="text-sm font-bold text-zinc-200">{typeof frame.content === 'string' && frame.content.replace('用户目标: ', '')}</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
   const getMeta = () => {
     switch (frame.contentType) {
       case 'PLAN': return { icon: Icons.Brain, label: '思考规划', color: 'text-purple-400' };
