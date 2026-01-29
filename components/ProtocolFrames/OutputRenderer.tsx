@@ -29,9 +29,9 @@ const ChartOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata }
   const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => Math.round(upperLimit * t));
 
   return (
-    <div className="w-full bg-zinc-800/40 rounded-xl p-4 border border-zinc-700/50 my-3 shadow-sm">
+    <div className="w-full bg-zinc-800/40 rounded-xl p-4 border border-zinc-700/50 my-5 shadow-sm">
       {title && (
-        <div className="mb-4 pl-1">
+        <div className="mb-4 pl-1 border-l-2 border-tech-500/50 pl-3">
            <h4 className="text-sm font-bold text-zinc-200 tracking-wide">{title}</h4>
         </div>
       )}
@@ -200,11 +200,34 @@ interface Props {
 export const OutputRenderer: React.FC<Props> = ({ frame }) => {
   // Logic to determine what to render
   const renderTextContent = () => {
+     // --- Feature: Rich Document Rendering (Blocks) ---
+     // Check if the content contains a structured 'document' object (from backend JSON)
+     // Structure: { document: { blocks: [ {type:'paragraph', text:'...'}, {type:'chart', chart:{...}} ] } }
+     const rawContent = frame.content as any;
+     const docData = rawContent?.document || rawContent?.value; // Support 'document' or generic 'value' key
+
+     if (docData && Array.isArray(docData.blocks)) {
+         return (
+             <div className="space-y-4">
+                 {docData.blocks.map((block: any, idx: number) => {
+                     if (block.type === 'paragraph' || block.type === 'text') {
+                         return <MarkdownView key={idx} content={block.text || block.content} />;
+                     }
+                     if (block.type === 'chart') {
+                         return <ChartOutput key={idx} data={block.chart} metadata={{ chartType: block.chart?.type }} />;
+                     }
+                     return null;
+                 })}
+             </div>
+         );
+     }
+
+     // --- Fallback: Standard Text/JSON ---
      if (typeof frame.content === 'string') {
          return <MarkdownView content={frame.content} />;
      }
      
-     // Unwrap JSON object if it has a 'content' field (Fix for "ugly JSON" issue)
+     // Unwrap JSON object if it has a simple 'content' field (Fix for "ugly JSON" issue)
      if (typeof frame.content === 'object' && frame.content && 'content' in frame.content) {
          const innerContent = (frame.content as any).content;
          if (typeof innerContent === 'string') {
@@ -234,7 +257,7 @@ export const OutputRenderer: React.FC<Props> = ({ frame }) => {
             
             <div className="prose prose-invert prose-sm max-w-none text-zinc-200">
                 {frame.contentType === 'TEXT' || frame.contentType === 'MARKDOWN' ? (
-                    // 1. Text/Markdown (with JSON unwrapping)
+                    // 1. Text/Markdown (Rich Document capable)
                     <div className="font-sans leading-7">
                         {renderTextContent()}
                     </div>
