@@ -127,22 +127,54 @@ const FileOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata })
 
 // --- Sub-Component: Table Output ---
 const TableOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata }) => {
+  // 1. Search Results Subtype (Restored Logic)
+  // Check specifically for 'search' subtype OR if the data structure looks like search results (has rows but no columns)
+  if ((metadata?.subtype === 'search' || !data.columns) && data.rows) {
+    return (
+      <div className="space-y-3 my-3">
+        {data.rows.map((row: any, idx: number) => (
+          <div key={idx} className="bg-zinc-950/50 p-3 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition-colors group">
+            <h3 className="text-sm font-semibold text-tech-400 mb-1 truncate flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-tech-500/50"></span>
+              {/* Assuming first column or 'url' field is the link */}
+              <a href={row.url || row.link || '#'} target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-tech-300">
+                {row.title || row.name || '无标题'}
+              </a>
+            </h3>
+            <p className="text-xs text-zinc-400 line-clamp-2 mb-2 leading-relaxed pl-3.5">
+                {row.description || row.snippet || row.content || ''}
+            </p>
+            <div className="flex items-center gap-3 text-[10px] text-zinc-600 font-mono pl-3.5">
+              {(row.source || row.siteName) && <span className="uppercase tracking-wider">{row.source || row.siteName}</span>}
+              {row.publishedDate && <span>{row.publishedDate}</span>}
+              <Icons.ChevronRight className="w-3 h-3 text-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+            </div>
+          </div>
+        ))}
+        {data.rowCount > data.rows.length && (
+           <div className="text-center text-[10px] text-zinc-600 italic py-2">... 共 {data.rowCount} 条结果</div>
+        )}
+      </div>
+    );
+  }
+
+  // 2. Standard Data Table
   if (data.rows && data.columns) {
     const isClickable = metadata?.clickable === true;
     
     return (
-      <div className="overflow-x-auto rounded-lg border border-zinc-700 my-4 shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-zinc-700 my-4 shadow-sm bg-zinc-900/30">
         <table className="w-full text-sm text-left text-zinc-300">
            <thead className="bg-zinc-800/80 text-zinc-100 uppercase text-xs tracking-wider font-semibold">
               <tr>
                 {data.columns.map((col: any, i: number) => (
-                  <th key={i} className="px-5 py-3 whitespace-nowrap">{col.header || col}</th>
+                  <th key={i} className="px-5 py-3 whitespace-nowrap border-b border-zinc-700">{col.header || col}</th>
                 ))}
               </tr>
            </thead>
-           <tbody className="divide-y divide-zinc-700">
+           <tbody className="divide-y divide-zinc-700/50">
               {data.rows.map((row: any, i: number) => (
-                 <tr key={i} className="hover:bg-zinc-700/30 transition-colors">
+                 <tr key={i} className="hover:bg-zinc-800/30 transition-colors">
                     {data.columns.map((col: any, j: number) => {
                        const key = typeof col === 'object' ? col.key : col;
                        const cellVal = Array.isArray(row) ? row[j] : row[key];
@@ -150,11 +182,11 @@ const TableOutput: React.FC<{ data: any; metadata?: any }> = ({ data, metadata }
                        if (j === 0 && isClickable) {
                          return (
                            <td key={j} className="px-5 py-3 whitespace-nowrap">
-                             <a href={row.url || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{cellVal}</a>
+                             <a href={row.url || '#'} target="_blank" rel="noopener noreferrer" className="text-tech-400 hover:underline">{cellVal}</a>
                            </td>
                          );
                        }
-                       return <td key={j} className="px-5 py-3 whitespace-nowrap">{cellVal}</td>
+                       return <td key={j} className="px-5 py-3 whitespace-nowrap text-zinc-400">{cellVal}</td>
                     })}
                  </tr>
               ))}
