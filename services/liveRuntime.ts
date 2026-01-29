@@ -56,7 +56,7 @@ export class LiveRuntimeService {
         id: this.genId('sys-boot'),
         timestamp: Date.now(),
         type: FrameType.DOCUMENT,
-        title: '系统初始化完成', 
+        title: '牛马AI已经全力待命', 
         contentType: 'LOG',
         content: 'Agent Runtime Service (REST Mode) initialized.\nReady to accept new objectives.',
     }, { status: AgentStatus.IDLE });
@@ -67,7 +67,7 @@ export class LiveRuntimeService {
       id: 'await-objective', // Static ID for the initial goal input
       timestamp: Date.now(),
       type: FrameType.AWAIT,
-      message: '请输入您的任务目标 (Goal):',
+      message: '您想 (Goal):',
       schema: { type: 'TEXT' }
     }, { status: AgentStatus.WAITING });
   }
@@ -118,7 +118,7 @@ export class LiveRuntimeService {
                 id: this.genId('sys-session'),
                 timestamp: Date.now(),
                 type: FrameType.DOCUMENT,
-                title: '会话已创建',
+                title: '任务会话已创建',
                 contentType: 'LOG',
                 content: `Session ID: ${this.sessionId}\nState: ${displayState}`,
             });
