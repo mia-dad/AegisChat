@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
 import { AwaitFrame } from '../../types';
 import { Icons } from '../icons';
+import { IntentConfirmationModal } from '../IntentConfirmationModal';
+import { ConfirmationChoice } from '../../services/backendTypes';
 
 interface Props {
   frame: AwaitFrame;
   onResolve: (val: string | Record<string, any>) => void;
   isLatest: boolean;
+  // Feature 017: 意图确认对话框状态
+  isIntentConfirmationActive?: boolean;
 }
 
-export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest }) => {
+export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest, isIntentConfirmationActive }) => {
   const isResolved = frame.resolved;
   const [formValues, setFormValues] = useState<Record<string, any>>({});
+
+  // Feature 017: 处理意图确认选择
+  const handleIntentConfirm = (choice: ConfirmationChoice) => {
+    onResolve({ confirmationChoice: choice });
+  };
 
   // Form handling logic
   const handleInputChange = (key: string, value: any) => {
@@ -151,9 +160,10 @@ export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest }) =
   };
 
   return (
+    <>
     <div className={`my-6 transition-all duration-500 ${
-        isResolved 
-        ? 'opacity-100' 
+        isResolved
+        ? 'opacity-100'
         : 'scale-[1.01] shadow-2xl shadow-amber-900/10'
     }`}>
         <div className={`rounded-xl border p-1 transition-colors duration-500 ${
@@ -220,5 +230,16 @@ export const AwaitRenderer: React.FC<Props> = ({ frame, onResolve, isLatest }) =
             </div>
         </div>
     </div>
+
+    {/* Feature 017: 意图确认模态框 - 固定在最上层 */}
+    {frame.schema?.type === 'INTENT_CONFIRMATION' && frame.schema.confirmationTurn && (
+      <IntentConfirmationModal
+        isOpen={!isResolved && isLatest && isIntentConfirmationActive}
+        confirmationTurn={frame.schema.confirmationTurn}
+        timeout={frame.schema.timeout || 30000}
+        onResolve={handleIntentConfirm}
+      />
+    )}
+  </>
   );
 };

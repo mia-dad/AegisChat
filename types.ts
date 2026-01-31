@@ -55,7 +55,7 @@ export interface AwaitFrame extends AgentFrame {
   type: FrameType.AWAIT;
   message: string; // The prompt for the user/system
   schema?: {
-    type: 'CONFIRMATION' | 'TEXT' | 'SELECTION' | 'FORM';
+    type: 'CONFIRMATION' | 'TEXT' | 'SELECTION' | 'FORM' | 'INTENT_CONFIRMATION';
     options?: Array<{ label: string; value: string; description?: string }>;
     fields?: Array<{
         key: string;
@@ -66,9 +66,22 @@ export interface AwaitFrame extends AgentFrame {
         description?: string;
     }>;
     defaultValue?: string;
+    // INTENT_CONFIRMATION 专属字段
+    confirmationTurn?: any; // IntentConfirmationTurn - 从 backendTypes 导入
+    timeout?: number; // 超时时间（毫秒），默认 30000
   };
   resolved?: boolean;
   resolvedValue?: string | Record<string, any>; // The value provided by user
+}
+
+/**
+ * Modal State - 意图确认对话框状态
+ */
+export interface ModalState {
+  isOpen: boolean;
+  confirmationTurn: any; // IntentConfirmationTurn
+  timeRemaining: number; // 剩余时间（毫秒）
+  isSubmitting: boolean; // 提交中状态
 }
 
 export type AnyFrame = DocumentFrame | OutputFrame | AwaitFrame;

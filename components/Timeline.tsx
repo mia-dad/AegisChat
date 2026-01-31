@@ -39,9 +39,11 @@ interface Props {
   frames: AnyFrame[];
   onResolveAwait: (id: string, value: string | Record<string, any>) => void;
   status: AgentStatus; // Added status prop
+  // Feature 017: 意图确认状态
+  isIntentConfirmationActive?: boolean;
 }
 
-export const Timeline: React.FC<Props> = ({ frames, onResolveAwait, status }) => {
+export const Timeline: React.FC<Props> = ({ frames, onResolveAwait, status, isIntentConfirmationActive }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
@@ -91,10 +93,11 @@ export const Timeline: React.FC<Props> = ({ frames, onResolveAwait, status }) =>
                         {frame.type === FrameType.DOCUMENT && <DocumentRenderer frame={frame} />}
                         {frame.type === FrameType.OUTPUT && <OutputRenderer frame={frame} />}
                         {frame.type === FrameType.AWAIT && (
-                            <AwaitRenderer 
-                                frame={frame} 
-                                onResolve={(val) => onResolveAwait(frame.id, val)} 
-                                isLatest={isLatest} 
+                            <AwaitRenderer
+                                frame={frame}
+                                onResolve={(val) => onResolveAwait(frame.id, val)}
+                                isLatest={isLatest}
+                                isIntentConfirmationActive={isIntentConfirmationActive}
                             />
                         )}
                     </div>

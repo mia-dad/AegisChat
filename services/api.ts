@@ -1,4 +1,4 @@
-import { CreateSessionResponse, TurnResponse, TurnRequest, ResumeRequest, ApiError, ApiErrorResponse, CreateSessionRequest } from './backendTypes';
+import { CreateSessionResponse, TurnResponse, TurnRequest, ResumeRequest, ApiError, ApiErrorResponse, CreateSessionRequest, ConfirmationChoice } from './backendTypes';
 
 // Use relative path so requests go through the Vite proxy (defined in vite.config.ts).
 // This avoids CORS errors because the browser thinks it's talking to the same origin.
@@ -53,10 +53,18 @@ export const createSession = async (goal: string): Promise<CreateSessionResponse
 /**
  * Execute a conversation turn
  * POST /api/agent/sessions/{sessionId}/turns
+ * @param confirmationChoice - 意图确认选择 (Feature 017)，与 content 互斥
  */
-export const executeTurn = async (sessionId: string, content: string): Promise<TurnResponse> => {
+export const executeTurn = async (
+  sessionId: string,
+  content: string,
+  confirmationChoice?: ConfirmationChoice
+): Promise<TurnResponse> => {
   try {
-    const payload: TurnRequest = { content };
+    const payload: TurnRequest = confirmationChoice
+      ? { confirmationChoice }
+      : { content };
+
     const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/turns`, {
       method: 'POST',
       headers: {
@@ -76,10 +84,24 @@ export const executeTurn = async (sessionId: string, content: string): Promise<T
 /**
  * Resume a blocked session with structured input
  * POST /api/agent/sessions/{sessionId}/resume
+ * @param originalContent - 用户原始输入文本，用于意图偏离检测
  */
-export const resumeSession = async (sessionId: string, structuredInput: Record<string, any>): Promise<TurnResponse> => {
+export const resumeSession = async (
+  sessionId: string,
+  structuredInput: Record<string, any>,
+  originalContent?: string
+): Promise<TurnResponse> => {
   try {
-    const payload: ResumeRequest = { structuredInput };
+    const payload: ResumeRequest = {
+      structuredInput
+    };
+    // 只有当 originalContent 有值时才添加 content 字段
+    if (originalContent !== undefined && originalContent !== null) {
+      payload.content = originalContent;
+    }
+
+    console.log('[resumeSession] payload:', JSON.stringify(payload));
+
     const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/resume`, {
       method: 'POST',
       headers: {
@@ -90,6 +112,28 @@ export const resumeSession = async (sessionId: string, structuredInput: Record<s
     return handleResponse<TurnResponse>(response);
   } catch (error) {
     console.error('Failed to resume session:', error);
+    if (error instanceof ApiError) throw error;
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`网络错误: ${msg}`);
+  }
+};
+
+/**
+ * Get session details (for pendingConfirmation recovery)
+ * GET /api/agent/sessions/{sessionId}
+ * Feature 017: 新增
+ */
+export const getSession = async (sessionId: string): Promise<any> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse<any>(response);
+  } catch (error) {
+    console.error('Failed to get session:', error);
     if (error instanceof ApiError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     throw new Error(`网络错误: ${msg}`);
